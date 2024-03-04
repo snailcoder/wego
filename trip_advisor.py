@@ -15,6 +15,7 @@ import logging
 import dashscope
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 Prompt = namedtuple('Prompt', ['name', 'instruction', 'examples'])
 
@@ -25,7 +26,7 @@ TRIP_ADVISE_PROMPT = Prompt(
         {
             'city': '绍兴',
             'duration': '2天',
-            'weathers': [{'day': '晴', 'night': '多云'}, {'day': '阴转小雨', 'night': '晴'}],
+            'weathers': [{'day_weather': '晴', 'night_weather': '多云'}, {'day_weather': '阴转小雨', 'night_weather': '晴'}],
             'trip_advise': {
                 'city': '绍兴',
                 'days': [
@@ -99,7 +100,7 @@ TRIP_ADVISE_PROMPT = Prompt(
         {
             'city': '北京',
             'duration': '2天',
-            'weathers': [{'day': '大雨', 'night': '多云'}, {'day': '小雨', 'night': '晴'}],
+            'weathers': [{'day_weather': '大雨', 'night_weather': '多云'}, {'day_weather': '小雨', 'night_weather': '晴'}],
             'trip_advise': {
                 'city': '北京',
                 'days': [
@@ -170,7 +171,7 @@ class TripAdvisor(object):
         weather = '\n天气情况:'
         for i, w in enumerate(trip['weathers']):
             weather += f'第{i+1}天'
-            day_weather, night_weather = w['day'], w['night']
+            day_weather, night_weather = w['day_weather'], w['night_weather']
             weather += f'白天{day_weather}, 晚上{night_weather}。'
         return city + duration + weather
 

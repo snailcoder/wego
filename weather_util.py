@@ -10,10 +10,12 @@ import os
 import json
 import logging
 import requests
+from datetime import date
 
 from map_util import GaodeGeo
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class GaodeWeather(object):
     def __init__(self, geo, weather_url):
@@ -38,9 +40,9 @@ class GaodeWeather(object):
             logger.error('Gaode weather api error: {}'.format(res_content['info']))
             return []
 
-        forecast = [{'date': ca['date'], 'day_weather': ca['dayweather'],
-                     'night_weather': ca['nightweather'], 'day_temp': ca['daytemp'],
-                     'night_temp': ca['nighttemp']}
+        forecast = [{'date': date.fromisoformat(ca['date']),
+                     'day_weather': ca['dayweather'],
+                     'night_weather': ca['nightweather']}
                      for ca in res_content['forecasts'][0]['casts']]
         return forecast
 

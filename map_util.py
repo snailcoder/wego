@@ -9,16 +9,56 @@
 import os
 import json
 import logging
+
 import requests
+import plotly.graph_objects as go
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-class Map(object):
-    def sort_locations(self, locations):
-        pass
+def locations_center(locations):
+    lon_lat = [loc.split(',') for loc in locations]
+    center_lon = sum([float(ll[0]) for ll in lon_lat]) / len(lon_lat)
+    center_lat = sum([float(ll[1]) for ll in lon_lat]) / len(lon_lat)
+    return center_lon, center_lat
 
-    def plot_locations_circle(self, locations):
-        pass
+def create_markers_figure(locations, addresses=None, marker_size=10):
+    if not addresses:
+        addresses = locations
+
+    # # Remove empty locations and the corresponding address.
+    # loc_addr = [(loc, addr) for loc, addr in zip(locations, addresses) if loc]
+    # locations = [la[0] for la in loc_addr]
+    # addresses = [la[1] for la in loc_addr]
+
+    center_lon, center_lat = locations_center(locations)
+    lon_lat = [loc.split(',') for loc in locations]
+
+    fig = go.Figure(go.Scattermapbox(
+        customdata=addresses,
+        lat=[ll[1] for ll in lon_lat],
+        lon=[ll[0] for ll in lon_lat],
+        mode='markers',
+        marker=go.scattermapbox.Marker(
+            size=marker_size
+        ),
+        hoverinfo='text',
+        hovertemplate='<b>%{customdata}</b>'
+    ))
+    fig.update_layout(
+        mapbox_style="open-street-map",
+        hovermode='closest',
+        mapbox=dict(
+            bearing=0,
+            center=go.layout.mapbox.Center(
+                lat=center_lat,
+                lon=center_lon
+            ),
+            pitch=0,
+            zoom=9
+        )
+    )
+    return fig
 
 class GaodeGeo(object):
     def __init__(self, geocode_url, staticmap_url,
@@ -51,18 +91,20 @@ class GaodeGeo(object):
         payload = {'address': address, 'key': self.api_key}
         if city:
             payload['city'] = city
+        location = []
         try:
             res = requests.get(self.geocode_url, params=payload)
             res_content = json.loads(res.text)
+
+            logger.info('Response of gaode geocode api: {}'.format(res_content))
+
+            if res_content['status'] == 0:
+                logger.error('Gaode geocode api error: {}'.format(res_content['info']))
+            else:
+                location = [g['location'] for g in res_content['geocodes']]
         except Exception as e:
             logger.error('Request gaode geocode api failed: {}'.format(e))
-            return []
 
-        if res_content['status'] == 0:
-            logger.error('Gaode geocode api error: {}'.format(res_content['info']))
-            return []
-
-        location = [g['location'] for g in res_content['geocodes']]
         return location
 
     def get_staticmap(self, addresses, city, locations=None, marker=False, label=True):
@@ -97,8 +139,11 @@ class GaodeGeo(object):
 # if __name__ == '__main__':
 #     geocode_url = "https://restapi.amap.com/v3/geocode/geo"
 #     staticmap_url = "https://restapi.amap.com/v3/staticmap"
-#     gaode = GaodeMap(geocode_url, staticmap_url)
-#     r = gaode.get_staticmap(['北京大学', '人民大学', '天安门', '北海公园'], '北京')
-#     with open('abc.png', 'wb') as f:
-#         f.write(r)
+#     gaode = GaodeGeo(geocode_url, staticmap_url)
+#     r = gaode.get_staticmap(['浙江大学', '西湖大学', '西湖', '西溪'], '杭州')
+#     print(r)
+#     img = Image.open(BytesIO(r))
+#     print(img)
+#     # with open('abc.png', 'wb') as f:
+#     #     f.write(r)
 
