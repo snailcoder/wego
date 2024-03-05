@@ -3,7 +3,7 @@
 # File              : map_util.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 03.03.2024
+# Last Modified Date: 05.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -22,29 +22,29 @@ def locations_center(locations):
     center_lat = sum([float(ll[1]) for ll in lon_lat]) / len(lon_lat)
     return center_lon, center_lat
 
-def create_markers_figure(locations, addresses=None, marker_size=10):
-    if not addresses:
-        addresses = locations
+def create_markers_figure(location_traces, marker_size=10):
+    fig = go.Figure()
 
-    # # Remove empty locations and the corresponding address.
-    # loc_addr = [(loc, addr) for loc, addr in zip(locations, addresses) if loc]
-    # locations = [la[0] for la in loc_addr]
-    # addresses = [la[1] for la in loc_addr]
+    locations = []
+    for tr in location_traces:
+        locations.extend(tr['locations'])
+        lon_lat = [loc.split(',') for loc in tr['locations']]
+
+        fig.add_trace(go.Scattermapbox(
+            name=tr['trace'],
+            customdata=tr['addresses'],
+            lat=[ll[1] for ll in lon_lat],
+            lon=[ll[0] for ll in lon_lat],
+            mode='markers',
+            marker=go.scattermapbox.Marker(
+                size=marker_size
+            ),
+            hoverinfo='text',
+            hovertemplate='<b>%{customdata}</b>'
+        ))
 
     center_lon, center_lat = locations_center(locations)
-    lon_lat = [loc.split(',') for loc in locations]
 
-    fig = go.Figure(go.Scattermapbox(
-        customdata=addresses,
-        lat=[ll[1] for ll in lon_lat],
-        lon=[ll[0] for ll in lon_lat],
-        mode='markers',
-        marker=go.scattermapbox.Marker(
-            size=marker_size
-        ),
-        hoverinfo='text',
-        hovertemplate='<b>%{customdata}</b>'
-    ))
     fig.update_layout(
         mapbox_style="open-street-map",
         hovermode='closest',
