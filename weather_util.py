@@ -3,7 +3,7 @@
 # File              : weather_util.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 03.03.2024
+# Last Modified Date: 06.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -28,7 +28,9 @@ class GaodeWeather(object):
         if not adcode:
             logger.warning('Can not get adcode for address: {}'.format(address))
             return []
-        payload = {'city': adcode[0], 'key': self.api_key, 'extensions': forecast_type}
+
+        top1_adcode = adcode[0]
+        payload = {'city': top1_adcode, 'key': self.api_key, 'extensions': forecast_type}
         try:
             res = requests.get(self.weather_url, params=payload)
             res_content = json.loads(res.text)
@@ -44,7 +46,7 @@ class GaodeWeather(object):
                      'day_weather': ca['dayweather'],
                      'night_weather': ca['nightweather']}
                      for ca in res_content['forecasts'][0]['casts']]
-        return forecast
+        return forecast, top1_adcode
 
 # if __name__ == '__main__':
 #     geocode_url = "https://restapi.amap.com/v3/geocode/geo"

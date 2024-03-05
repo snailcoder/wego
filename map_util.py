@@ -3,7 +3,7 @@
 # File              : map_util.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 05.03.2024
+# Last Modified Date: 06.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -61,10 +61,11 @@ def create_markers_figure(location_traces, marker_size=10):
     return fig
 
 class GaodeGeo(object):
-    def __init__(self, geocode_url, staticmap_url,
+    def __init__(self, geocode_url, poi_url, staticmap_url,
                  staticmap_scale='2', staticmap_size='400*400'):
         self.api_key = os.environ['GAODE_API_KEY']
         self.geocode_url = geocode_url
+        self.poi_url = poi_url
         self.staticmap_url = staticmap_url
         self.staticmap_scale = staticmap_scale  # 1: 普通 2: 高清
         self.staticmap_size = staticmap_size  # 最大支持1024*1024
@@ -96,14 +97,32 @@ class GaodeGeo(object):
             res = requests.get(self.geocode_url, params=payload)
             res_content = json.loads(res.text)
 
-            logger.info('Response of gaode geocode api: {}'.format(res_content))
+            # logger.info('Response of gaode geocode api: {}'.format(res_content))
 
             if res_content['status'] == 0:
                 logger.error('Gaode geocode api error: {}'.format(res_content['info']))
-            else:
+                return location
+
+            if not city:
                 location = [g['location'] for g in res_content['geocodes']]
+                return location
+
+            for g in res_content['geocodes']:
+                if city == g['city'] or city == g['citycode'] or city == g['adcode']:
+                    location.append(g['location'])
+            if not location:
+                logger.warning(f'No location of {address}:{city} found, searching POI.')
+                payload['citylimit'] = True
+                res = requests.get(self.poi_url, params=payload)
+                res_content = json.loads(res.text)
+
+                if res_content['status'] == 0:
+                    logger.error('Gaode poi api error: {}'.format(res_content['info']))
+                    return location
+
+                location = [p['location'] for p in res_content['pois']]
         except Exception as e:
-            logger.error('Request gaode geocode api failed: {}'.format(e))
+            logger.error('Get location failed: {}'.format(e))
 
         return location
 

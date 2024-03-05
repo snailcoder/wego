@@ -3,7 +3,7 @@
 # File              : app.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 03.03.2024
-# Last Modified Date: 05.03.2024
+# Last Modified Date: 06.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from datetime import date, timedelta
@@ -19,25 +19,26 @@ from trip_advisor import QwenTripAdvisor
 GAODE_GEOCODE_URL = 'https://restapi.amap.com/v3/geocode/geo'
 GAODE_WEATHER_URL = 'https://restapi.amap.com/v3/weather/weatherInfo'
 GAODE_STATICMAP_URL = 'https://restapi.amap.com/v3/staticmap'
+GAODE_POI_URL = 'https://restapi.amap.com/v3/place/text'
 
 QWEN_LLM_NAME = 'qwen-max'
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-wg_geo = GaodeGeo(GAODE_GEOCODE_URL, GAODE_STATICMAP_URL)
+wg_geo = GaodeGeo(GAODE_GEOCODE_URL, GAODE_POI_URL, GAODE_STATICMAP_URL)
 wg_weather = GaodeWeather(wg_geo, GAODE_WEATHER_URL)
 wg_trip_advisor = QwenTripAdvisor(QWEN_LLM_NAME)
 
 def create_trip_brief(city, days, first_date):
     first_date = date.fromisoformat(first_date)
-    forecast = wg_weather.get_forecast(city, city)
+    forecast, adcode = wg_weather.get_forecast(city, city)
     if not forecast:
         logger.warning('Can not get forecast of city: {}'.format(city))
         return None
 
     trip_dates = [first_date + timedelta(days=i) for i in range(days)]
-    trip_brief = {'city': city, 'duration': f'{days}天'}
+    trip_brief = {'city': city, 'adcode': adcode, 'duration': f'{days}天'}
 
     weathers = []
     for td in trip_dates:
@@ -55,15 +56,23 @@ def create_trip_brief(city, days, first_date):
 
 def generate_trip_advise(trip_brief, max_retry=3):
     advise = {}
-    for i in range(max_retry):
+    i = 0
+    while i < max_retry:
         advise = wg_trip_advisor.generate_advise(trip_brief)
         if advise:
             break
-        print(f'Retry to generate advise for the {i+1}th time...')
+        i += 1
+        print(f'Retry to generate advise for the {i}th time...')
+
+    if i == max_retry:
+        print(f'Generate trip advise failed for {i} times.')
+        return None
+    advise['adcode'] = trip_brief['adcode']
     return advise
 
 def mark_advise_on_map(advise):
-    city = advise['city']
+    # city = advise['city']
+    city = advise['adcode']
     traces = []
 
     for day in advise['days']:
@@ -134,7 +143,7 @@ with gr.Blocks() as demo:
                     placeholder='择一城而往，例如新昌县, 杭州, 北京...'
                 )
                 days = gr.Number(
-                    2, label='天数', minimum=MIN_TRIP_DAYS,
+                    label='天数', minimum=MIN_TRIP_DAYS,
                     maximum=MAX_TRIP_DAYS, interactive=True
                 )
                 first_date = gr.Textbox(
@@ -155,15 +164,18 @@ with gr.Blocks() as demo:
     go_btn.click(
         get_trip_brief_and_advise,
         inputs=[city, days, first_date],
-        outputs=[brief, advise]
+        outputs=[brief, advise],
+        show_progress=True
     ).then(
         mark_advise_on_map,
         inputs=[advise],
-        outputs=[map_plot]
+        outputs=[map_plot],
+        show_progress=True
     ).then(
         highlight_advise,
         inputs=[brief, advise],
-        outputs=highlighted_texts
+        outputs=highlighted_texts,
+        show_progress=True
     )
 
 demo.launch(show_error=True)
