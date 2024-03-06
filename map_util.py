@@ -49,6 +49,10 @@ def plot_markers_map(location_traces, marker_size=10):
             hovertemplate='<b>%{customdata}</b>'
         ))
 
+    if not locations:
+        logger.warning('No marker locations provided, can not plot.')
+        return fig
+
     center_lon, center_lat = locations_center(locations)
 
     fig.update_layout(
@@ -116,9 +120,9 @@ class GaodeGeo(object):
                         lon_lat = g['location']
                         if re.match(r'\d{6}', city) and same_city(city, g['adcode']):
                             location.append(lon_lat)
-                        elif re.match(r'\d{3,4}', city):
+                        elif re.match(r'\d{3,4}', city) and city == g['citycode']:
                             location.append(lon_lat)
-                        elif city in g['city']:
+                        elif city in g['formatted_address']:
                             location.append(lon_lat)
             else:
                 logger.warning(

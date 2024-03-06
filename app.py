@@ -28,7 +28,9 @@ GAODE_POI_URL = 'https://restapi.amap.com/v3/place/text'
 
 QWEN_LLM_NAME = 'qwen-max'
 
-# DEFAULT_LOCATION_ON_MAP
+DEFAULT_MARKER_LOCATION = '121.460351,31.163443'
+DEFAULT_MARKER_ADDRESS = '上海人工智能实验室'
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,9 @@ def create_trip_brief(city, days, first_date):
                 break
             i += 1
         if i == len(forecast):
-            weathers.append({'day_weather': '未知', 'night_weather': '未知'})
+            weathers.append(
+                {'date': td, 'day_weather': '未知', 'night_weather': '未知'}
+            )
 
     trip_brief['weathers'] = weathers
     return trip_brief
@@ -76,55 +80,75 @@ def generate_trip_advise(trip_brief, max_retry=3):
     advise['adcode'] = trip_brief['adcode']
     return advise
 
+def mark_default_location_on_map():
+    traces = [{
+        'trace': DEFAULT_MARKER_ADDRESS,
+        'locations': [DEFAULT_MARKER_LOCATION],
+        'addresses': [DEFAULT_MARKER_ADDRESS]
+    }]
+
+    return plot_markers_map(traces)
+
 def mark_city_on_map(city):
-    locations = wg_geo.get_location(city, city)
-    traces = [{'trace': city, 'locations': locations, 'addresses': [city]}]
-    fig = plot_markers_map(traces)
-    return fig
+    if city:
+        locations = wg_geo.get_location(city, city)
+        if locations:
+            traces = [
+                {'trace': city, 'locations': locations[:1], 'addresses': [city]}
+            ]
+            return plot_markers_map(traces)
+
+    return mark_default_location_on_map()
 
 def mark_advise_on_map(advise):
-    # city = advise['city']
-    city = advise['adcode']
     traces = []
 
-    for day in advise['days']:
-        date_trace = {'trace': day['date']}
-        valid_locations, valid_addresses = [], []
-        for sch in day['schedule']:
-            addr = sch['location']
-            loclist = wg_geo.get_location(addr, city)
-            if loclist:
-                valid_locations.append(loclist[0])
-                valid_addresses.append(addr)
-        date_trace.update({
-            'locations': valid_locations, 'addresses': valid_addresses
-        })
-        traces.append(date_trace)
+    try:
+        city = advise['adcode']
 
-    fig = plot_markers_map(traces)
+        for day in advise['days']:
+            date_trace = {'trace': day['date']}
+            valid_locations, valid_addresses = [], []
+            for sch in day['schedule']:
+                addr = sch['location']
+                loclist = wg_geo.get_location(addr, city)
+                if loclist:
+                    valid_locations.append(loclist[0])
+                    valid_addresses.append(addr)
+            date_trace.update({
+                'locations': valid_locations, 'addresses': valid_addresses
+            })
+            traces.append(date_trace)
+    except Exception as e:
+        logger.error('Mark advise locations on map failed: {}'.format(e))
+        raise gr.Error('Mark advise locations on map failed.')
 
-    return fig
+    return plot_markers_map(traces)
 
 def highlight_advise(brief, advise):
     highlighted = []
 
-    days = advise['days']
-    weathers = brief['weathers']
-    dates = [w['date'] for w in weathers]
+    try:
+        days = advise['days']
+        weathers = brief['weathers']
+        dates = [w['date'] for w in weathers]
 
-    for da, dt, we in zip(days, dates, weathers):
-        dt_str = dt.isoformat()
-        day_we, night_we = we['day_weather'], we['night_weather']
-        label = f'{dt_str}, 白天{day_we}, 晚上{night_we}'
+        for da, dt, we in zip(days, dates, weathers):
+            dt_str = dt.isoformat()
+            day_we, night_we = we['day_weather'], we['night_weather']
+            label = f'{dt_str}, 白天{day_we}, 晚上{night_we}'
 
-        label_texts = {'label': label, 'texts': []}
-        for sch in da['schedule']:
-            label_texts['texts'].extend([
-                (sch['time'] + '\n', 'time'),
-                (sch['location'], 'location'),
-                (sch['description'] + '\n', 'tip')
-            ])
-        highlighted.append(label_texts)
+            label_texts = {'label': label, 'texts': []}
+            for sch in da['schedule']:
+                label_texts['texts'].extend([
+                    (sch['time'] + '\n', 'time'),
+                    (sch['location'], 'location'),
+                    (sch['description'] + '\n', 'tip')
+                ])
+            highlighted.append(label_texts)
+    except Exception as e:
+        logger.error('Extract advise for highlighting failed: {}'.format(e))
+        raise gr.Error('Extract advise for highlighting failed.')
 
     highlighted_show = [
         gr.HighlightedText(h['texts'], label=h['label'], visible=True)
@@ -138,7 +162,9 @@ def highlight_advise(brief, advise):
 
 def get_trip_brief_and_advise(city, days, first_date):
     brief = create_trip_brief(city, days, first_date)
-    logger.info('Trip brief: {}'.format(brief)) 
+    logger.info(
+        'Start to generate advise based on the trip brief: {}'.format(brief)
+    ) 
     advise = generate_trip_advise(brief)
     logger.info('Generated advise (in JSON): {}'.format(advise))
     return brief, advise
@@ -173,8 +199,8 @@ with gr.Blocks() as demo:
 
     brief, advise = gr.State(), gr.State()
 
+    demo.load(mark_default_location_on_map, outputs=[map_plot])
     city.blur(mark_city_on_map, inputs=[city], outputs=[map_plot])
-
     go_btn.click(
         get_trip_brief_and_advise,
         inputs=[city, days, first_date],

@@ -3,13 +3,14 @@
 # File              : trip_advisor.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 03.03.2024
+# Last Modified Date: 06.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from collections import namedtuple
 from http import HTTPStatus
 import json
 import os
+import re
 import logging
 
 import dashscope
@@ -193,7 +194,7 @@ class QwenTripAdvisor(TripAdvisor):
         self.model_name = model_name  # e.g. qwen-max, qwen-max-longcontext
 
     def generate_advise(self, trip):
-        advise = ''
+        advise = {}
         prompt = self.create_prompt(trip)
         try:
             response = dashscope.Generation.call(
@@ -205,7 +206,14 @@ class QwenTripAdvisor(TripAdvisor):
                     'Qwen output: {}, usage info: {}'.format(
                         response.output, response.usage)
                 )
-                advise = json.loads(response.output['text'])
+                text = response.output['text']
+                # Sometimes the text not only contains valid JSON but also
+                # contains some contents like ```json {} ```. Stupid LLM.
+                m = re.search(r'```json(.*)```', text, re.DOTALL)
+                if m:
+                    text = m.group(1)
+
+                advise = json.loads(text)
             else:
                 logger.error(
                     'Qwen request failed. Request id: {}, status code: {},'
