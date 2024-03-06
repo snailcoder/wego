@@ -9,12 +9,12 @@
 import os
 import json
 import logging
+import re
 
 import requests
 import plotly.graph_objects as go
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 def locations_center(locations):
     lon_lat = [loc.split(',') for loc in locations]
@@ -22,7 +22,13 @@ def locations_center(locations):
     center_lat = sum([float(ll[1]) for ll in lon_lat]) / len(lon_lat)
     return center_lon, center_lat
 
-def create_markers_figure(location_traces, marker_size=10):
+def same_province(code1, code2):
+    return int(code1) // 1000 == int(code2) // 1000
+
+def same_city(code1, code2):
+    return int(code1) // 100 == int(code2) // 100
+
+def plot_markers_map(location_traces, marker_size=10):
     fig = go.Figure()
 
     locations = []
@@ -97,21 +103,31 @@ class GaodeGeo(object):
             res = requests.get(self.geocode_url, params=payload)
             res_content = json.loads(res.text)
 
-            # logger.info('Response of gaode geocode api: {}'.format(res_content))
-
             if res_content['status'] == 0:
                 logger.error('Gaode geocode api error: {}'.format(res_content['info']))
                 return location
 
-            if not city:
-                location = [g['location'] for g in res_content['geocodes']]
-                return location
+            geocodes = res_content.get('geocodes')
+            if geocodes:
+                if not city:
+                    location = [g['location'] for g in res_content['geocodes']]
+                else:
+                    for g in geocodes:
+                        lon_lat = g['location']
+                        if re.match(r'\d{6}', city) and same_city(city, g['adcode']):
+                            location.append(lon_lat)
+                        elif re.match(r'\d{3,4}', city):
+                            location.append(lon_lat)
+                        elif city in g['city']:
+                            location.append(lon_lat)
+            else:
+                logger.warning(
+                    f'Gaode does not provide geocodes of {address}:{city}'
+                )
 
-            for g in res_content['geocodes']:
-                if city == g['city'] or city == g['citycode'] or city == g['adcode']:
-                    location.append(g['location'])
             if not location:
-                logger.warning(f'No location of {address}:{city} found, searching POI.')
+                logger.warning(f'Searching POI of {address}:{city}')
+
                 payload['citylimit'] = True
                 res = requests.get(self.poi_url, params=payload)
                 res_content = json.loads(res.text)
@@ -120,7 +136,13 @@ class GaodeGeo(object):
                     logger.error('Gaode poi api error: {}'.format(res_content['info']))
                     return location
 
-                location = [p['location'] for p in res_content['pois']]
+                pois = res_content.get('pois')
+                if pois:
+                    location = [p['location'] for p in pois]
+                else:
+                    logger.warning(
+                        f'Gaode does not provide poi of {address}:{city}'
+                    )
         except Exception as e:
             logger.error('Get location failed: {}'.format(e))
 
@@ -154,15 +176,4 @@ class GaodeGeo(object):
             logger.error('Request gaode staticmap api failed: {}'.format(e))
             return ''
         return res.content
-
-# if __name__ == '__main__':
-#     geocode_url = "https://restapi.amap.com/v3/geocode/geo"
-#     staticmap_url = "https://restapi.amap.com/v3/staticmap"
-#     gaode = GaodeGeo(geocode_url, staticmap_url)
-#     r = gaode.get_staticmap(['浙江大学', '西湖大学', '西湖', '西溪'], '杭州')
-#     print(r)
-#     img = Image.open(BytesIO(r))
-#     print(img)
-#     # with open('abc.png', 'wb') as f:
-#     #     f.write(r)
 

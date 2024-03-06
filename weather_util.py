@@ -15,7 +15,6 @@ from datetime import date
 from map_util import GaodeGeo
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class GaodeWeather(object):
     def __init__(self, geo, weather_url):
@@ -47,16 +46,4 @@ class GaodeWeather(object):
                      'night_weather': ca['nightweather']}
                      for ca in res_content['forecasts'][0]['casts']]
         return forecast, top1_adcode
-
-# if __name__ == '__main__':
-#     geocode_url = "https://restapi.amap.com/v3/geocode/geo"
-#     weather_url = "https://restapi.amap.com/v3/weather/weatherInfo"
-#     staticmap_url = "https://restapi.amap.com/v3/staticmap"
-# 
-#     geo = GaodeGeo(geocode_url, staticmap_url)
-# 
-#     weather_cli = GaodeWeather(geo, weather_url)
-#     r = weather_cli.get_forecast('安山古道', '绍兴')
-#     print(r)
-
 

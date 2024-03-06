@@ -15,7 +15,6 @@ import logging
 import dashscope
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 Prompt = namedtuple('Prompt', ['name', 'instruction', 'examples'])
 
@@ -218,21 +217,4 @@ class QwenTripAdvisor(TripAdvisor):
             logger.error('Qwen generation failed: {}'.format(e))
 
         return advise
-
-# if __name__ == '__main__':
-#     # ad = TripAdvisor()
-#     # prompt = ad.create_prompt({
-#     #     'city': '上海',
-#     #     'duration': '2天',
-#     #     'weathers': [{'day': '晴', 'night': '大雨'}, {'day': '小雨', 'night': '多云'}]
-#     # })
-#     # print(prompt)
-#     qw = QwenTripAdvisor(dashscope.Generation.Models.qwen_max)
-#     advise = qw.generate_advise({
-#         'city': '上海',
-#         'duration': '2天',
-#         'weathers': [{'day': '晴', 'night': '大雨'}, {'day': '小雨', 'night': '多云'}]
-#     })
-#     print(advise)
-
 

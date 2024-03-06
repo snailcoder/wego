@@ -12,9 +12,14 @@ import logging
 import gradio as gr
 import plotly.graph_objects as go
 
-from map_util import GaodeGeo, create_markers_figure
+from map_util import GaodeGeo, plot_markers_map
 from weather_util import GaodeWeather
 from trip_advisor import QwenTripAdvisor
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 GAODE_GEOCODE_URL = 'https://restapi.amap.com/v3/geocode/geo'
 GAODE_WEATHER_URL = 'https://restapi.amap.com/v3/weather/weatherInfo'
@@ -23,8 +28,9 @@ GAODE_POI_URL = 'https://restapi.amap.com/v3/place/text'
 
 QWEN_LLM_NAME = 'qwen-max'
 
+# DEFAULT_LOCATION_ON_MAP
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 wg_geo = GaodeGeo(GAODE_GEOCODE_URL, GAODE_POI_URL, GAODE_STATICMAP_URL)
 wg_weather = GaodeWeather(wg_geo, GAODE_WEATHER_URL)
@@ -62,13 +68,19 @@ def generate_trip_advise(trip_brief, max_retry=3):
         if advise:
             break
         i += 1
-        print(f'Retry to generate advise for the {i}th time...')
+        logger.warning(f'Retry to generate advise for the {i}th time...')
 
     if i == max_retry:
-        print(f'Generate trip advise failed for {i} times.')
+        logger.error(f'Generate trip advise failed for {i} times.')
         return None
     advise['adcode'] = trip_brief['adcode']
     return advise
+
+def mark_city_on_map(city):
+    locations = wg_geo.get_location(city, city)
+    traces = [{'trace': city, 'locations': locations, 'addresses': [city]}]
+    fig = plot_markers_map(traces)
+    return fig
 
 def mark_advise_on_map(advise):
     # city = advise['city']
@@ -89,7 +101,7 @@ def mark_advise_on_map(advise):
         })
         traces.append(date_trace)
 
-    fig = create_markers_figure(traces)
+    fig = plot_markers_map(traces)
 
     return fig
 
@@ -126,9 +138,9 @@ def highlight_advise(brief, advise):
 
 def get_trip_brief_and_advise(city, days, first_date):
     brief = create_trip_brief(city, days, first_date)
-    print('Trip brief: {}'.format(brief)) 
+    logger.info('Trip brief: {}'.format(brief)) 
     advise = generate_trip_advise(brief)
-    print('Generated advise (in JSON): {}'.format(advise))
+    logger.info('Generated advise (in JSON): {}'.format(advise))
     return brief, advise
 
 MIN_TRIP_DAYS = 1
@@ -160,6 +172,8 @@ with gr.Blocks() as demo:
                 highlighted_texts.append(ht)
 
     brief, advise = gr.State(), gr.State()
+
+    city.blur(mark_city_on_map, inputs=[city], outputs=[map_plot])
 
     go_btn.click(
         get_trip_brief_and_advise,
