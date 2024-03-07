@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 
 from map_util import GaodeGeo, plot_markers_map
 from weather_util import GaodeWeather
+from video_util import BilibiliVideo
 from trip_advisor import QwenTripAdvisor
 
 logging.basicConfig(
@@ -28,25 +29,34 @@ GAODE_POI_URL = 'https://restapi.amap.com/v3/place/text'
 
 QWEN_LLM_NAME = 'qwen-max'
 
+BILIBILI_SEARCH_URL = 'https://api.bilibili.com/x/web-interface/search/all/v2'
+BILIBILI_EMBED_URL = '//player.bilibili.com/player.html'
+
 DEFAULT_MARKER_LOCATION = '121.460351,31.163443'
 DEFAULT_MARKER_ADDRESS = '上海人工智能实验室'
-
+DEFAULT_BILIBILI_AID = '1351359862'
+DEFAULT_BILIBILI_BVID = 'BV1Uz421D7Yk'
 
 logger = logging.getLogger(__name__)
 
 wg_geo = GaodeGeo(GAODE_GEOCODE_URL, GAODE_POI_URL, GAODE_STATICMAP_URL)
 wg_weather = GaodeWeather(wg_geo, GAODE_WEATHER_URL)
+wg_video = BilibiliVideo(BILIBILI_SEARCH_URL, BILIBILI_EMBED_URL)
 wg_trip_advisor = QwenTripAdvisor(QWEN_LLM_NAME)
 
 def create_trip_brief(city, days, first_date):
     first_date = date.fromisoformat(first_date)
-    forecast, adcode = wg_weather.get_forecast(city, city)
+    forecast, geocode = wg_weather.get_forecast(city, city)
     if not forecast:
         logger.warning('Can not get forecast of city: {}'.format(city))
         return None
 
+    adcode, std_city = geocode['adcode'], geo['formatted_address']
     trip_dates = [first_date + timedelta(days=i) for i in range(days)]
-    trip_brief = {'city': city, 'adcode': adcode, 'duration': f'{days}天'}
+    trip_brief = {
+        'city': city, 'adcode': adcode,
+        'duration': f'{days}天', 'std_city': std_city
+    }
 
     weathers = []
     for td in trip_dates:
@@ -125,6 +135,20 @@ def mark_advise_on_map(advise):
 
     return plot_markers_map(traces)
 
+def embed_default_video():
+    return wg_video.get_embed_html_by_id(
+            DEFAULT_BILIBILI_AID, DEFAULT_BILIBILI_BVID)
+
+def embed_city_video(city):
+    keyword = city + '宣传片'
+    videoinfo = wg_video.search_video(keyword)
+    if not videoinfo:
+        logger.warning(f'No video found of keyword: {keyword}')
+        gr.Warning(f'No video found of {city}.')
+        return embed_default_video()
+
+    return wg_video.get_embed_html(videoinfo[0])
+
 def highlight_advise(brief, advise):
     highlighted = []
 
@@ -160,13 +184,23 @@ def highlight_advise(brief, advise):
     ]
     return highlighted_show + highlighted_hide
 
-def get_trip_brief_and_advise(city, days, first_date):
+def get_video_and_advise(city, days, first_date):
     brief = create_trip_brief(city, days, first_date)
+
+    keyword = brief['std_city'] + '宣传片'
+    videoinfo = wg_video.search_video(keyword)
+    if not videoinfo:
+        logger.warning(f'No video of {keyword} found.')
+        gr.Warning(f'No video of {city} found.')
+        return embed_default_video()
+
     logger.info(
         'Start to generate advise based on the trip brief: {}'.format(brief)
-    ) 
+    )
+    gr.Info('Generating advise...')
     advise = generate_trip_advise(brief)
     logger.info('Generated advise (in JSON): {}'.format(advise))
+    gr.Info('Generation completed.')
     return brief, advise
 
 MIN_TRIP_DAYS = 1
@@ -189,6 +223,7 @@ with gr.Blocks() as demo:
                     placeholder='放飞自我的第一天，格式为yyyy-mm-dd'
                 )
         go_btn = gr.Button('GO', size='sm')
+        video_html = gr.HTML(label='随便看看')
         map_plot = gr.Plot(label='旅行地图')
 
         highlighted_texts = []
@@ -200,9 +235,10 @@ with gr.Blocks() as demo:
     brief, advise = gr.State(), gr.State()
 
     demo.load(mark_default_location_on_map, outputs=[map_plot])
+    demo.load(embed_default_video, outputs=[video_html])
     city.blur(mark_city_on_map, inputs=[city], outputs=[map_plot])
     go_btn.click(
-        get_trip_brief_and_advise,
+        get_video_and_advise,
         inputs=[city, days, first_date],
         outputs=[brief, advise],
         show_progress=True

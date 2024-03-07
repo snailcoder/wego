@@ -77,10 +77,10 @@ class GaodeGeo(object):
         self.geocode_url = geocode_url
         self.poi_url = poi_url
         self.staticmap_url = staticmap_url
-        self.staticmap_scale = staticmap_scale  # 1: 普通 2: 高清
-        self.staticmap_size = staticmap_size  # 最大支持1024*1024
+        self.staticmap_scale = staticmap_scale  # 1: general 2: hd
+        self.staticmap_size = staticmap_size  # largest: 1024*1024
 
-    def get_adcode(self, address, city=None):
+    def get_geocode(self, address, city=None):
         payload = {'address': address, 'key': self.api_key}
         if city:
             payload['city'] = city
@@ -95,8 +95,14 @@ class GaodeGeo(object):
             logger.error('Gaode geocode api error: {}'.format(res_content['info']))
             return []
 
-        adcode = [g['adcode'] for g in res_content['geocodes']]
-        return adcode
+        geocode = [{
+            'adcode': g['adcode'],
+            'citycode': g['citycode'],
+            'city': g['city'],
+            'province': g['province'],
+            'formatted_address': g['formatted_address']}
+            for g in res_content['geocodes']]
+        return geocode
 
     def get_location(self, address, city=None):
         payload = {'address': address, 'key': self.api_key}

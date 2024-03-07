@@ -23,13 +23,17 @@ class GaodeWeather(object):
         self.weather_url = weather_url
 
     def get_forecast(self, address, city, forecast_type='all'):
-        adcode = self.geo.get_adcode(address, city)
-        if not adcode:
-            logger.warning('Can not get adcode for address: {}'.format(address))
+        geocode = self.geo.get_geocode(address, city)
+        if not geocode:
+            logger.warning('Can not get geocode for address: {}'.format(address))
             return []
 
-        top1_adcode = adcode[0]
-        payload = {'city': top1_adcode, 'key': self.api_key, 'extensions': forecast_type}
+        top1_geocode = geocode[0]
+        payload = {
+            'city': top1_geocode['adcode'],
+            'key': self.api_key,
+            'extensions': forecast_type
+        }
         try:
             res = requests.get(self.weather_url, params=payload)
             res_content = json.loads(res.text)
@@ -45,5 +49,5 @@ class GaodeWeather(object):
                      'day_weather': ca['dayweather'],
                      'night_weather': ca['nightweather']}
                      for ca in res_content['forecasts'][0]['casts']]
-        return forecast, top1_adcode
+        return forecast, top1_geocode
 
