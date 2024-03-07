@@ -3,7 +3,7 @@
 # File              : app.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 03.03.2024
-# Last Modified Date: 06.03.2024
+# Last Modified Date: 07.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from datetime import date, timedelta
@@ -51,7 +51,7 @@ def create_trip_brief(city, days, first_date):
         logger.warning('Can not get forecast of city: {}'.format(city))
         return None
 
-    adcode, std_city = geocode['adcode'], geo['formatted_address']
+    adcode, std_city = geocode['adcode'], geocode['formatted_address']
     trip_dates = [first_date + timedelta(days=i) for i in range(days)]
     trip_brief = {
         'city': city, 'adcode': adcode,
@@ -141,10 +141,11 @@ def embed_default_video():
 
 def embed_city_video(city):
     keyword = city + '宣传片'
+    gr.Info('Searching most related videos...')
     videoinfo = wg_video.search_video(keyword)
     if not videoinfo:
-        logger.warning(f'No video found of keyword: {keyword}')
-        gr.Warning(f'No video found of {city}.')
+        logger.warning(f'No video of {keyword} found.')
+        gr.Warning(f'No video of {city} found.')
         return embed_default_video()
 
     return wg_video.get_embed_html(videoinfo[0])
@@ -184,20 +185,27 @@ def highlight_advise(brief, advise):
     ]
     return highlighted_show + highlighted_hide
 
-def get_video_and_advise(city, days, first_date):
+def get_trip_brief_and_video(city, days, first_date):
     brief = create_trip_brief(city, days, first_date)
+    embed_html = embed_city_video(brief['std_city'])
+    return brief, embed_html
 
-    keyword = brief['std_city'] + '宣传片'
-    videoinfo = wg_video.search_video(keyword)
-    if not videoinfo:
-        logger.warning(f'No video of {keyword} found.')
-        gr.Warning(f'No video of {city} found.')
-        return embed_default_video()
-
+def get_trip_advise(brief):
     logger.info(
         'Start to generate advise based on the trip brief: {}'.format(brief)
     )
-    gr.Info('Generating advise...')
+    gr.Info('Start to generate advise...')
+    advise = generate_trip_advise(brief)
+    logger.info('Generated advise (in JSON): {}'.format(advise))
+    gr.Info('Generation completed.')
+    return advise
+
+def get_trip_brief_and_advise(city, days, first_date):
+    brief = create_trip_brief(city, days, first_date)
+    logger.info(
+        'Start to generate advise based on the trip brief: {}'.format(brief)
+    )
+    gr.Info('Start to generate advise...')
     advise = generate_trip_advise(brief)
     logger.info('Generated advise (in JSON): {}'.format(advise))
     gr.Info('Generation completed.')
@@ -235,12 +243,33 @@ with gr.Blocks() as demo:
     brief, advise = gr.State(), gr.State()
 
     demo.load(mark_default_location_on_map, outputs=[map_plot])
-    demo.load(embed_default_video, outputs=[video_html])
+    # demo.load(embed_default_video, outputs=[video_html])
     city.blur(mark_city_on_map, inputs=[city], outputs=[map_plot])
+    # go_btn.click(
+    #     get_trip_brief_and_advise,
+    #     inputs=[city, days, first_date],
+    #     outputs=[brief, advise],
+    #     show_progress=True
+    # ).then(
+    #     mark_advise_on_map,
+    #     inputs=[advise],
+    #     outputs=[map_plot],
+    #     show_progress=True
+    # ).then(
+    #     highlight_advise,
+    #     inputs=[brief, advise],
+    #     outputs=highlighted_texts,
+    #     show_progress=True
+    # )
     go_btn.click(
-        get_video_and_advise,
+        get_trip_brief_and_video,
         inputs=[city, days, first_date],
-        outputs=[brief, advise],
+        outputs=[brief, video_html],
+        show_progress=True
+    ).then(
+        get_trip_advise,
+        inputs=[brief],
+        outputs=[advise],
         show_progress=True
     ).then(
         mark_advise_on_map,
