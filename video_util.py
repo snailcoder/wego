@@ -3,11 +3,12 @@
 # File              : video_util.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 07.03.2024
-# Last Modified Date: 07.03.2024
+# Last Modified Date: 08.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 import json
 import logging
+import os
 
 import requests
 
@@ -18,13 +19,11 @@ class BilibiliVideo(object):
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0',
         'Referer': 'https://www.bilibili.com'
     }
-    COOKIES = {
-        'SESSDATA': '5e273d4b%2C1725370214%2Cf24b4%2A32CjCwzkAkfm4t5DdrmhWpk7L3rjm5i06ibbkEWIbeIkMQNbt4L43-keV8t2BIbvn9878SVnZOR3VnemQyZ2NFbzB3UDhfUTJleDB1RU5GQWR0RlZqdEJYYnItMTVua1huNk5XVnR1SGViTmlNUEtySnR1TzZNU3IyalFheHY1RndFREt4MmJwanRRIIEC'
-    }
 
     def __init__(self, search_url, embed_url):
         self.search_url = search_url
         self.embed_url = embed_url
+        self.cookies = {'SESSDATA': os.environ['BILIBILI_SESSDATA']}
 
     def _get_embed_src(self, aid, bvid, high_quality):
         high_quality = int(high_quality)
@@ -36,7 +35,7 @@ class BilibiliVideo(object):
         try:
             res = requests.get(
                 self.search_url, params=payload,
-                headers=BilibiliVideo.HEADERS, cookies=BilibiliVideo.COOKIES
+                headers=BilibiliVideo.HEADERS, cookies=self.cookies
             )
             res_content = json.loads(res.text)
 

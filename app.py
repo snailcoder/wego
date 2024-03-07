@@ -3,7 +3,7 @@
 # File              : app.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 03.03.2024
-# Last Modified Date: 07.03.2024
+# Last Modified Date: 08.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from datetime import date, timedelta
@@ -141,7 +141,7 @@ def embed_default_video():
 
 def embed_city_video(city):
     keyword = city + '宣传片'
-    gr.Info('Searching most related videos...')
+    gr.Info('Searching videos.')
     videoinfo = wg_video.search_video(keyword)
     if not videoinfo:
         logger.warning(f'No video of {keyword} found.')
@@ -205,7 +205,7 @@ def get_trip_brief_and_advise(city, days, first_date):
     logger.info(
         'Start to generate advise based on the trip brief: {}'.format(brief)
     )
-    gr.Info('Start to generate advise...')
+    gr.Info('Start to generate advise.')
     advise = generate_trip_advise(brief)
     logger.info('Generated advise (in JSON): {}'.format(advise))
     gr.Info('Generation completed.')
