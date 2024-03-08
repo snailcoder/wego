@@ -14,6 +14,8 @@ import re
 import logging
 
 import dashscope
+import openxlab
+from openxlab.model import inference
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +197,9 @@ class QwenTripAdvisor(TripAdvisor):
 
     def generate_advise(self, trip):
         advise = {}
+        if not trip:
+            logger.warning('No trip brief provided to generate advise.')
+            return advise
         prompt = self.create_prompt(trip)
         try:
             response = dashscope.Generation.call(
@@ -225,4 +230,25 @@ class QwenTripAdvisor(TripAdvisor):
             logger.error('Qwen generation failed: {}'.format(e))
 
         return advise
+
+# class InternTripAdvisor(TripAdvisor):
+#     def __init__(self, model_repo):
+#         self.access_key = os.environ['OPENXLAB_AK']
+#         self.secret_key = os.environ['OPENXLAB_SK']
+#         self.model_repo = model_repo
+# 
+#         openxlab.login(ak=self.access_key, sk=self.secret_key)
+# 
+#     def generate_advise(self, trip):
+#         advise = {}
+#         prompt = self.create_prompt(trip)
+#         res = inference(self.model_repo, prompt)
+#         print(res)
+# 
+# if __name__ == '__main__':
+#     import datetime
+# 
+#     advisor = InternTripAdvisor('OpenLMLab/InternLM-chat-20b')
+#     trip =  {'city': '峰峰矿区', 'adcode': '130406', 'duration': '4天', 'std_city': '河北省邯郸市峰峰矿区', 'weathers': [{'date': datetime.date(2024, 3, 8), 'day_weather': '晴', 'night_weather': '晴'}, {'date': datetime.date(2024, 3, 9), 'day_weather': '晴', 'night_weather': '晴'}, {'date': datetime.date(2024, 3, 10), 'day_weather': '晴', 'night_weather': '多云'}, {'date': datetime.date(2024, 3, 11), 'day_weather': '晴', 'night_weather': '晴'}]}
+#     advisor.generate_advise(trip)
 
