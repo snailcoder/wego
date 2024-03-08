@@ -216,7 +216,7 @@ def get_trip_brief_and_advise(city, days, first_date):
 MIN_TRIP_DAYS = 1
 MAX_TRIP_DAYS = 7
 
-with gr.Blocks() as demo:
+with gr.Blocks(theme=gr.themes.Glass()) as demo:
     with gr.Column():
         with gr.Group():
             with gr.Row():
@@ -246,24 +246,7 @@ with gr.Blocks() as demo:
     brief, advise = gr.State(), gr.State()
 
     demo.load(mark_default_location_on_map, outputs=[map_plot])
-    # demo.load(embed_default_video, outputs=[video_html])
     city.blur(mark_city_on_map, inputs=[city], outputs=[map_plot])
-    # go_btn.click(
-    #     get_trip_brief_and_advise,
-    #     inputs=[city, days, first_date],
-    #     outputs=[brief, advise],
-    #     show_progress=True
-    # ).then(
-    #     mark_advise_on_map,
-    #     inputs=[advise],
-    #     outputs=[map_plot],
-    #     show_progress=True
-    # ).then(
-    #     highlight_advise,
-    #     inputs=[brief, advise],
-    #     outputs=highlighted_texts,
-    #     show_progress=True
-    # )
     go_btn.click(
         get_trip_brief_and_video,
         inputs=[city, days, first_date],
