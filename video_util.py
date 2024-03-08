@@ -15,6 +15,9 @@ import requests
 logger = logging.getLogger(__name__)
 
 class BilibiliVideo(object):
+    # Add header and cookies before requesting bilibili to bypass its
+    # anti-spider strategy, otherwise all requests will be banned.
+
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0',
         'Referer': 'https://www.bilibili.com'

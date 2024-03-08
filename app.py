@@ -92,6 +92,40 @@ def generate_trip_advise(trip_brief, max_retry=3):
     advise['adcode'] = trip_brief['adcode']
     return advise
 
+def embed_default_video():
+    return wg_video.get_embed_html_by_id(
+            DEFAULT_BILIBILI_AID, DEFAULT_BILIBILI_BVID)
+
+def embed_city_video(city):
+    keyword = city + '宣传片'
+    gr.Info('Searching videos.')
+    videoinfo = wg_video.search_video(keyword)
+    if not videoinfo:
+        logger.warning(f'No video of {keyword} found.')
+        gr.Warning(f'No video of {city} found.')
+        return embed_default_video()
+
+    return wg_video.get_embed_html(videoinfo[0])
+
+def get_trip_brief_and_video(city, days, first_date):
+    brief = create_trip_brief(city, days, first_date)
+    embed_html = embed_city_video(brief['std_city'])
+    return brief, embed_html
+
+def get_trip_advise(brief):
+    if not brief:
+        logger.warning('No brief provided to generate advise.')
+        return None
+
+    logger.info(
+        'Start to generate advise based on the trip brief: {}'.format(brief)
+    )
+    gr.Info('Start to generate advise.')
+    advise = generate_trip_advise(brief)
+    logger.info('Generated advise (in JSON): {}'.format(advise))
+    gr.Info('Generation completed.')
+    return advise
+
 def mark_default_location_on_map():
     traces = [{
         'trace': DEFAULT_MARKER_ADDRESS,
@@ -113,6 +147,10 @@ def mark_city_on_map(city):
     return mark_default_location_on_map()
 
 def mark_advise_on_map(advise):
+    if not advise:
+        logger.warning('No advise provided for plotting.')
+        return mark_default_location_on_map()
+
     traces = []
 
     try:
@@ -133,26 +171,14 @@ def mark_advise_on_map(advise):
             traces.append(date_trace)
     except Exception as e:
         logger.error('Mark advise locations on map failed: {}'.format(e))
-        raise gr.Error('Mark advise locations on map failed.')
 
     return plot_markers_map(traces)
 
-def embed_default_video():
-    return wg_video.get_embed_html_by_id(
-            DEFAULT_BILIBILI_AID, DEFAULT_BILIBILI_BVID)
-
-def embed_city_video(city):
-    keyword = city + '宣传片'
-    gr.Info('Searching videos.')
-    videoinfo = wg_video.search_video(keyword)
-    if not videoinfo:
-        logger.warning(f'No video of {keyword} found.')
-        gr.Warning(f'No video of {city} found.')
-        return embed_default_video()
-
-    return wg_video.get_embed_html(videoinfo[0])
-
 def highlight_advise(brief, advise):
+    if not advise:
+        logger.warning('No advise for highlighting.')
+        return [gr.HighlightedText(visible=False)] * MAX_TRIP_DAYS
+
     highlighted = []
 
     try:
@@ -175,7 +201,6 @@ def highlight_advise(brief, advise):
             highlighted.append(label_texts)
     except Exception as e:
         logger.error('Extract advise for highlighting failed: {}'.format(e))
-        raise gr.Error('Extract advise for highlighting failed.')
 
     highlighted_show = [
         gr.HighlightedText(h['texts'], label=h['label'], visible=True)
@@ -187,36 +212,11 @@ def highlight_advise(brief, advise):
     ]
     return highlighted_show + highlighted_hide
 
-def get_trip_brief_and_video(city, days, first_date):
-    brief = create_trip_brief(city, days, first_date)
-    embed_html = embed_city_video(brief['std_city'])
-    return brief, embed_html
-
-def get_trip_advise(brief):
-    logger.info(
-        'Start to generate advise based on the trip brief: {}'.format(brief)
-    )
-    gr.Info('Start to generate advise.')
-    advise = generate_trip_advise(brief)
-    logger.info('Generated advise (in JSON): {}'.format(advise))
-    gr.Info('Generation completed.')
-    return advise
-
-def get_trip_brief_and_advise(city, days, first_date):
-    brief = create_trip_brief(city, days, first_date)
-    logger.info(
-        'Start to generate advise based on the trip brief: {}'.format(brief)
-    )
-    gr.Info('Start to generate advise.')
-    advise = generate_trip_advise(brief)
-    logger.info('Generated advise (in JSON): {}'.format(advise))
-    gr.Info('Generation completed.')
-    return brief, advise
 
 MIN_TRIP_DAYS = 1
 MAX_TRIP_DAYS = 7
 
-with gr.Blocks(theme=gr.themes.Glass()) as demo:
+with gr.Blocks() as demo:
     with gr.Column():
         with gr.Group():
             with gr.Row():

@@ -197,6 +197,9 @@ class QwenTripAdvisor(TripAdvisor):
 
     def generate_advise(self, trip):
         advise = {}
+        if not trip:
+            logger.warning('No trip brief provided to generate advise.')
+            return advise
         prompt = self.create_prompt(trip)
         try:
             response = dashscope.Generation.call(
