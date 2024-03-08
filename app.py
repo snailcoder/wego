@@ -29,6 +29,8 @@ GAODE_POI_URL = 'https://restapi.amap.com/v3/place/text'
 
 QWEN_LLM_NAME = 'qwen-max'
 
+INTERNLM_MODEL_REPO = 'OpenLMLab/InternLM-chat-20b'
+
 BILIBILI_SEARCH_URL = 'https://api.bilibili.com/x/web-interface/search/all/v2'
 BILIBILI_EMBED_URL = '//player.bilibili.com/player.html'
 
@@ -194,7 +196,7 @@ def get_trip_advise(brief):
     logger.info(
         'Start to generate advise based on the trip brief: {}'.format(brief)
     )
-    gr.Info('Start to generate advise...')
+    gr.Info('Start to generate advise.')
     advise = generate_trip_advise(brief)
     logger.info('Generated advise (in JSON): {}'.format(advise))
     gr.Info('Generation completed.')
@@ -231,7 +233,6 @@ with gr.Blocks() as demo:
                     placeholder='放飞自我的第一天，格式为yyyy-mm-dd'
                 )
         go_btn = gr.Button('GO', size='sm')
-        video_html = gr.HTML(label='随便看看')
         map_plot = gr.Plot(label='旅行地图')
 
         highlighted_texts = []
@@ -239,6 +240,8 @@ with gr.Blocks() as demo:
             for i in range(MAX_TRIP_DAYS):
                 ht = gr.HighlightedText(visible=False)
                 highlighted_texts.append(ht)
+
+        video_html = gr.HTML(label='随便看看')
 
     brief, advise = gr.State(), gr.State()
 
