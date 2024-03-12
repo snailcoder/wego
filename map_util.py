@@ -142,7 +142,7 @@ class GaodeGeo(object):
             if not location:
                 logger.warning(f'Searching POI of {address}:{city}')
 
-                payload['citylimit'] = True
+                payload.update({'keywords': address, 'citylimit': True})
                 res = requests.get(self.poi_url, params=payload)
                 res_content = json.loads(res.text)
 
