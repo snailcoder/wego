@@ -254,7 +254,7 @@ with gr.Blocks() as demo:
                 )
                 first_date = gr.Textbox(
                     label='开始日期',
-                    placeholder='放飞自我的第一天，例如2024-3-8，20240310...'
+                    placeholder='放飞自我的第一天，例如2024-3-8'
                 )
         go_btn = gr.Button('GO', size='sm')
         map_plot = gr.Plot(label='旅行地图')
