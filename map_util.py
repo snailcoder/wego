@@ -124,7 +124,11 @@ class GaodeGeo(object):
                 else:
                     for g in geocodes:
                         lon_lat = g['location']
-                        if re.match(r'\d{6}', city) and same_city(city, g['adcode']):
+
+                        if re.match(r'(110|120|310|500)\d{3}', city) and \
+                                same_province(city, g['adcode']):
+                            location.append(lon_lat)
+                        elif re.match(r'\d{6}', city) and same_city(city, g['adcode']):
                             location.append(lon_lat)
                         elif re.match(r'\d{3,4}', city) and city == g['citycode']:
                             location.append(lon_lat)
