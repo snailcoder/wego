@@ -6,7 +6,7 @@
 # Last Modified Date: 08.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 import logging
 
 import gradio as gr
@@ -47,14 +47,28 @@ wg_video = BilibiliVideo(BILIBILI_SEARCH_URL, BILIBILI_EMBED_URL)
 wg_trip_advisor = QwenTripAdvisor(QWEN_LLM_NAME)
 
 def create_trip_brief(city, days, first_date):
-    first_date = date.fromisoformat(first_date)
+    # first_date = date.fromisoformat(first_date)
+    day1 = None
+
+    for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%Y%m%d']:
+        try:
+            day1 = datetime.strptime(first_date, fmt).date()
+            break
+        except:
+            continue
+
+    if not day1:
+        logger.warning(f'Invalid date format: {first_date}')
+        gr.Warning('Invalid date format.')
+        return None
+
     forecast, geocode = wg_weather.get_forecast(city, city)
     if not forecast:
         logger.warning('Can not get forecast of city: {}'.format(city))
         return None
 
     adcode, std_city = geocode['adcode'], geocode['formatted_address']
-    trip_dates = [first_date + timedelta(days=i) for i in range(days)]
+    trip_dates = [day1 + timedelta(days=i) for i in range(days)]
     trip_brief = {
         'city': city, 'adcode': adcode,
         'duration': f'{days}天', 'std_city': std_city
@@ -97,6 +111,11 @@ def embed_default_video():
             DEFAULT_BILIBILI_AID, DEFAULT_BILIBILI_BVID)
 
 def embed_city_video(city):
+    if not city:
+        logger.warning(f'No city provided for searching video.')
+        gr.Warning(f'No city provided for searching video.')
+        return embed_default_video()
+
     keyword = city + '宣传片'
     gr.Info('Searching videos.')
     videoinfo = wg_video.search_video(keyword)
@@ -109,7 +128,12 @@ def embed_city_video(city):
 
 def get_trip_brief_and_video(city, days, first_date):
     brief = create_trip_brief(city, days, first_date)
-    embed_html = embed_city_video(brief['std_city'])
+    if not brief:
+        logger.warning('Trip brief is None.')
+        return None, None
+
+    std_city = brief.get('std_city')
+    embed_html = embed_city_video(std_city)
     return brief, embed_html
 
 def get_trip_advise(brief):
@@ -230,7 +254,7 @@ with gr.Blocks() as demo:
                 )
                 first_date = gr.Textbox(
                     label='开始日期',
-                    placeholder='放飞自我的第一天，格式为yyyy-mm-dd'
+                    placeholder='放飞自我的第一天，例如2024-3-8，20240310...'
                 )
         go_btn = gr.Button('GO', size='sm')
         map_plot = gr.Plot(label='旅行地图')
