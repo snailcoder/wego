@@ -3,7 +3,7 @@
 # File              : trip_advisor.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 06.03.2024
+# Last Modified Date: 12.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from collections import namedtuple
@@ -14,8 +14,8 @@ import re
 import logging
 
 import dashscope
-import openxlab
-from openxlab.model import inference
+# import openxlab
+# from openxlab.model import inference
 
 logger = logging.getLogger(__name__)
 
@@ -243,12 +243,4 @@ class QwenTripAdvisor(TripAdvisor):
 #         advise = {}
 #         prompt = self.create_prompt(trip)
 #         res = inference(self.model_repo, prompt)
-#         print(res)
-# 
-# if __name__ == '__main__':
-#     import datetime
-# 
-#     advisor = InternTripAdvisor('OpenLMLab/InternLM-chat-20b')
-#     trip =  {'city': '峰峰矿区', 'adcode': '130406', 'duration': '4天', 'std_city': '河北省邯郸市峰峰矿区', 'weathers': [{'date': datetime.date(2024, 3, 8), 'day_weather': '晴', 'night_weather': '晴'}, {'date': datetime.date(2024, 3, 9), 'day_weather': '晴', 'night_weather': '晴'}, {'date': datetime.date(2024, 3, 10), 'day_weather': '晴', 'night_weather': '多云'}, {'date': datetime.date(2024, 3, 11), 'day_weather': '晴', 'night_weather': '晴'}]}
-#     advisor.generate_advise(trip)
 

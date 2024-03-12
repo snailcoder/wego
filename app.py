@@ -3,7 +3,7 @@
 # File              : app.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 03.03.2024
-# Last Modified Date: 08.03.2024
+# Last Modified Date: 12.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from datetime import datetime, date, timedelta
@@ -47,7 +47,11 @@ wg_video = BilibiliVideo(BILIBILI_SEARCH_URL, BILIBILI_EMBED_URL)
 wg_trip_advisor = QwenTripAdvisor(QWEN_LLM_NAME)
 
 def create_trip_brief(city, days, first_date):
-    # first_date = date.fromisoformat(first_date)
+    if days < 1 or days > 7:
+        logger.warning(f'Invalid days: {days}')
+        gr.Warning('Days should be in range [1, 7].')
+        return None
+
     day1 = None
 
     for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%Y%m%d']:
