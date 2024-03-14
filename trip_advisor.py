@@ -3,7 +3,7 @@
 # File              : trip_advisor.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 12.03.2024
+# Last Modified Date: 14.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from collections import namedtuple
@@ -13,9 +13,9 @@ import os
 import re
 import logging
 
+import requests
 import dashscope
-# import openxlab
-# from openxlab.model import inference
+import openxlab
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ Prompt = namedtuple('Prompt', ['name', 'instruction', 'examples'])
 
 TRIP_ADVISE_PROMPT = Prompt(
     name='trip_advise',
-    instruction='你具有丰富的旅行经验，了解各地著名或小众旅游景点，擅长规划旅游行程。你可以帮助我规划旅行行程、提供各种类型的旅游目的地建议，包括著名景点和小众独特的去处，并且可以根据我的偏好、预算、时间以及特定的兴趣点（如历史文化探索、自然风光欣赏、美食之旅等）来定制旅行方案。制定旅行攻略应遵守的原则包括：每天至少安排1个景点，至多安排5个景点；每天游览景点的顺序要考虑景点特点，例如，适合看日出的景点要安排在早上，适合徒步游览的景点尽量安排在上午，适合看日落的景点要安排在傍晚，适合看夜景的景点应当安排在晚上；安排景点时要根据当天的天气状况，选择适合晴朗天气游览的景点和适合雨雪天气游览的景点；安排在相邻时间段游览的景点之间的距离不要太远。你的任务是根据旅游天数、目的地和天气等出行信息制定旅游攻略，用合法的JSON格式返回结果，不要添加注释。',
+    instruction='你具有丰富的旅行经验，了解各地著名或小众旅游景点，擅长规划旅游行程。你可以帮助我规划旅行行程、提供各种类型的旅游目的地建议，包括著名景点和小众独特的去处，并且可以根据我的偏好、预算、时间以及特定的兴趣点（如历史文化探索、自然风光欣赏、美食之旅等）来定制旅行方案。制定旅行攻略应遵守的原则包括：每天至少安排1个景点，至多安排5个景点；每天游览景点的顺序要考虑景点特点，例如，适合看日出的景点要安排在早上，适合徒步游览的景点尽量安排在上午，适合看日落的景点要安排在傍晚，适合看夜景的景点应当安排在晚上；安排景点时要根据当天的天气状况，选择适合晴朗天气游览的景点和适合雨雪天气游览的景点；安排在相邻时间段游览的景点之间的距离不要太远；如果天气未知，安排行程时不必考虑天气情况。你的任务是根据旅游天数、目的地和天气等出行信息制定旅游攻略，用合法的JSON格式返回结果，不要添加注释。',
     examples=[
         {
             'city': '绍兴',
@@ -231,16 +231,60 @@ class QwenTripAdvisor(TripAdvisor):
 
         return advise
 
-# class InternTripAdvisor(TripAdvisor):
-#     def __init__(self, model_repo):
-#         self.access_key = os.environ['OPENXLAB_AK']
-#         self.secret_key = os.environ['OPENXLAB_SK']
-#         self.model_repo = model_repo
-# 
-#         openxlab.login(ak=self.access_key, sk=self.secret_key)
-# 
-#     def generate_advise(self, trip):
-#         advise = {}
-#         prompt = self.create_prompt(trip)
-#         res = inference(self.model_repo, prompt)
+class InternTripAdvisor(TripAdvisor):
+    def __init__(self, model_name, model_url, temperature=0.8, top_p=0.9):
+        self.access_key = os.environ['OPENXLAB_AK']
+        self.secret_key = os.environ['OPENXLAB_SK']
+        self.model_url = model_url
+        self.model_name = model_name
+        self.temperature = temperature
+        self.top_p = top_p
+
+        openxlab.login(ak=self.access_key, sk=self.secret_key)
+
+    def _get_token(self):
+        return openxlab.xlab.handler.user_token.get_jwt(self.access_key,
+                                                        self.secret_key)
+
+    def generate_advise(self, trip):
+        advise = {}
+        if not trip:
+            logger.warning('No trip brief provided to generate advise.')
+            return advise
+        prompt = self.create_prompt(trip)
+        headers = {
+            'Authorization': self._get_token(),
+            'Content-Type': 'application/json'
+        }
+        payload = {
+            'model': self.model_name,
+            'messages': [{'role': 'user', 'text': prompt}],
+            'temperature': self.temperature,
+            'top_p': self.top_p
+        }
+        try:
+            response = requests.post(self.model_url, headers=headers,
+                                     data=json.dumps(payload))
+            content = response.json()
+            if response.status_code == HTTPStatus.OK:
+                logger.info('InternLM output: {}')
+
+                text = content['data']['choices'][0]['text']
+                print(text)
+                m = re.search(r'{.+}', text, re.DOTALL)
+                if m:
+                    text = m.group(0)
+
+                advise = json.loads(text)
+            else:
+                logger.error(
+                    'InternLM request failed. Status code: {},'
+                    ' code: {}, message: {}, error: {}'.format(
+                        response.status_code, content['code'], content['msg'],
+                        content['error'])
+                )
+        except Exception as e:
+            logger.error(f'InternLM generation failed: {e}')
+
+        return advise
 
