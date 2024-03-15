@@ -84,24 +84,25 @@ class GaodeGeo(object):
         payload = {'address': address, 'key': self.api_key}
         if city:
             payload['city'] = city
+        geocode = []
         try:
             res = requests.get(self.geocode_url, params=payload)
             res_content = json.loads(res.text)
+            if res_content['status'] == 0:
+                logger.error('Gaode geocode api error: {}'.format(res_content['info']))
+                return geocode
+
+            geocode = [{
+                'adcode': g['adcode'],
+                'citycode': g['citycode'],
+                'city': g['city'],
+                'province': g['province'],
+                'formatted_address': g['formatted_address']}
+                for g in res_content['geocodes']]
+
         except Exception as e:
-            logger.error('Request gaode geocode api failed: {}'.format(e))
-            return []
+            logger.error('Get geocode failed: {}'.format(e))
 
-        if res_content['status'] == 0:
-            logger.error('Gaode geocode api error: {}'.format(res_content['info']))
-            return []
-
-        geocode = [{
-            'adcode': g['adcode'],
-            'citycode': g['citycode'],
-            'city': g['city'],
-            'province': g['province'],
-            'formatted_address': g['formatted_address']}
-            for g in res_content['geocodes']]
         return geocode
 
     def get_location(self, address, city=None):
@@ -187,7 +188,7 @@ class GaodeGeo(object):
         try:
             res = requests.get(self.staticmap_url, params=payload)
         except Exception as e:
-            logger.error('Request gaode staticmap api failed: {}'.format(e))
+            logger.error('Get staticmap failed: {}'.format(e))
             return ''
         return res.content
 
