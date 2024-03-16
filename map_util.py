@@ -3,7 +3,7 @@
 # File              : map_util.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 06.03.2024
+# Last Modified Date: 16.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -94,8 +94,8 @@ class GaodeGeo(object):
 
             geocode = [{
                 'adcode': g['adcode'],
-                'citycode': g['citycode'],
-                'city': g['city'],
+                'citycode': g.get('citycode'),
+                'city': g.get('city'),
                 'province': g['province'],
                 'formatted_address': g['formatted_address']}
                 for g in res_content['geocodes']]
