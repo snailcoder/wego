@@ -2,7 +2,13 @@
 WeGo is an LLM-based app that generates trip advise for travellers.
 
 # Usage
-WeGo is built based on Gradio and as easy to use as you open this [link](https://openxlab.org.cn/apps/detail/reply1988/WeGo). It only needs three essential factors of a trip as inputs: the city where you want to go, the trip duration and the first day of your trip. WeGo will plan the trip based on not only main attractions but also the weather of the destination.
+WeGo is built based on Gradio and as easy to use as you open this [link](https://openxlab.org.cn/apps/detail/reply1988/WeGo). You can also run it on your own computer:
+
+```
+python app.py
+```
+
+WeGo only needs three essential factors of a trip as inputs: the city where you want to go, the trip duration and the first day of your trip. WeGo will plan the trip based on not only main attractions but also the weather of the destination.
 
 ![WeGo](/assets/img/ui.PNG)
 
