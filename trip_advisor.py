@@ -267,7 +267,7 @@ class InternTripAdvisor(TripAdvisor):
                                      data=json.dumps(payload))
             content = response.json()
             if response.status_code == HTTPStatus.OK:
-                logger.info('InternLM output: {}')
+                logger.info('InternLM output: {}'.format(content))
 
                 text = content['data']['choices'][0]['text']
                 m = re.search(r'{.+}', text, re.DOTALL)
@@ -288,9 +288,13 @@ class InternTripAdvisor(TripAdvisor):
         return advise
 
 class YiTripAdvisor(TripAdvisor):
-    def __init__(self, auth_url, model_url):
+    def __init__(self, auth_url, model_url, temperature=0.9, top_p=0.8,
+                 penalty_score=2.0):
         self.auth_url = auth_url
         self.model_url = model_url
+        self.temperature = temperature
+        self.top_p = top_p
+        self.penalty_score = penalty_score
         self.api_key = os.environ['BAIDU_API_KEY']
         self.secret_key = os.environ['BAIDU_SK']
 
@@ -334,26 +338,21 @@ class YiTripAdvisor(TripAdvisor):
             response = requests.post(
                 self.model_url, params=params, headers=headers, data=data
             )
-            content = json.loads(response.text)
-            text = content['result']
-            m = re.search(r'{.+}', text, re.DOTALL)
-            if m:
-                text = m.group(0)
+            content = response.json()
 
-            advise = json.loads(text)
+            if not content.get('error_code'):
+                logger.info('Yi output: {}'.format(content))
+                text = content['result']
+                m = re.search(r'{.+}', text, re.DOTALL)
+                if m:
+                    text = m.group(0)
+                advise = json.loads(text)
+            else:
+                logger.error('Yi request failed. '
+                             'Error code: {}, error message: {}'.format(
+                                 response['error_code'], response['error_msg']))
         except Exception as e:
             logger.error('Yi generation failed: {}'.format(e))
 
         return advise
-
-# if __name__ == '__main__':
-#     import datetime
-#     advisor = YiTripAdvisor(
-#         'https://aip.baidubce.com/oauth/2.0/token',
-#         'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/yi_34b_chat'
-#     )
-#     brief = {'city': '焦作', 'adcode': '410800', 'duration': '1天', 'std_city': '河南省焦作市', 'weathers': [{'date': datetime.date(2024, 3, 18), 'day_weather': '多云', 'night_weather': '晴'}]}
-#     # brief = {'city': '成都', 'adcode': '510100', 'duration': '3天', 'std_city': '四川省成都市', 'weathers': [{'date': datetime.date(2024, 4, 4), 'day_weather': '未知', 'night_weather': '未知'}, {'date': datetime.date(2024, 4, 5), 'day_weather': '未知', 'night_weather': '未知'}, {'date': datetime.date(2024, 4, 6), 'day_weather': '未知', 'night_weather': '未知'}]}
-#     res = advisor.generate_advise(brief)
-#     print(res)
 
