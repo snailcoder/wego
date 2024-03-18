@@ -3,7 +3,7 @@
 # File              : trip_advisor.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 14.03.2024
+# Last Modified Date: 18.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from collections import namedtuple
@@ -267,10 +267,9 @@ class InternTripAdvisor(TripAdvisor):
                                      data=json.dumps(payload))
             content = response.json()
             if response.status_code == HTTPStatus.OK:
-                logger.info('InternLM output: {}')
+                logger.info('InternLM output: {}'.format(content))
 
                 text = content['data']['choices'][0]['text']
-                print(text)
                 m = re.search(r'{.+}', text, re.DOTALL)
                 if m:
                     text = m.group(0)
@@ -285,6 +284,75 @@ class InternTripAdvisor(TripAdvisor):
                 )
         except Exception as e:
             logger.error(f'InternLM generation failed: {e}')
+
+        return advise
+
+class YiTripAdvisor(TripAdvisor):
+    def __init__(self, auth_url, model_url, temperature=0.9, top_p=0.8,
+                 penalty_score=2.0):
+        self.auth_url = auth_url
+        self.model_url = model_url
+        self.temperature = temperature
+        self.top_p = top_p
+        self.penalty_score = penalty_score
+        self.api_key = os.environ['BAIDU_API_KEY']
+        self.secret_key = os.environ['BAIDU_SK']
+
+    def _get_token(self):
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        payload = {
+            'grant_type': 'client_credentials',
+            'client_id': self.api_key,
+            'client_secret': self.secret_key
+        }
+
+        try:
+            response = requests.post(self.auth_url, headers=headers, params=payload)
+        except Exception as e:
+            logger.error('Get access token failed: {}'.format(e))
+
+        return response.json().get("access_token")
+
+    def generate_advise(self, trip):
+        advise = {}
+        if not trip:
+            logger.warning('No trip brief provided to generate advise.')
+            return advise
+        prompt = self.create_prompt(trip)
+
+        headers = {'Content-Type': 'application/json'}
+        params = {'access_token': self._get_token()}
+        data = json.dumps({
+             "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        })
+        advise = {}
+        try:
+            response = requests.post(
+                self.model_url, params=params, headers=headers, data=data
+            )
+            content = response.json()
+
+            if not content.get('error_code'):
+                logger.info('Yi output: {}'.format(content))
+                text = content['result']
+                m = re.search(r'{.+}', text, re.DOTALL)
+                if m:
+                    text = m.group(0)
+                advise = json.loads(text)
+            else:
+                logger.error('Yi request failed. '
+                             'Error code: {}, error message: {}'.format(
+                                 response['error_code'], response['error_msg']))
+        except Exception as e:
+            logger.error('Yi generation failed: {}'.format(e))
 
         return advise
 
