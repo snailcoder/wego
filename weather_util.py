@@ -3,7 +3,7 @@
 # File              : weather_util.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 01.03.2024
-# Last Modified Date: 16.03.2024
+# Last Modified Date: 21.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -22,16 +22,10 @@ class GaodeWeather(object):
         self.geo = geo
         self.weather_url = weather_url
 
-    def get_forecast(self, address, city, forecast_type='all'):
+    def get_forecast(self, geocode, forecast_type='all'):
         forecast = []
-        geocode = self.geo.get_geocode(address, city)
-        if not geocode:
-            logger.warning('Can not get geocode for address: {}'.format(address))
-            return forecast
-
-        top1_geocode = geocode[0]
         payload = {
-            'city': top1_geocode['adcode'],
+            'city': geocode['adcode'],
             'key': self.api_key,
             'extensions': forecast_type
         }
@@ -48,5 +42,5 @@ class GaodeWeather(object):
         except Exception as e:
             logger.error('Request gaode weather api failed: {}'.format(e))
 
-        return forecast, top1_geocode
+        return forecast
 
