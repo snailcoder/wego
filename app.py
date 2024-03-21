@@ -3,7 +3,7 @@
 # File              : app.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 03.03.2024
-# Last Modified Date: 18.03.2024
+# Last Modified Date: 21.03.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from datetime import datetime, date, timedelta
@@ -72,17 +72,23 @@ def create_trip_brief(city, days, first_date):
         gr.Warning('Invalid date format.')
         return None
 
-    forecast, geocode = wg_weather.get_forecast(city, city)
-    if not forecast:
-        logger.warning('Can not get forecast of city: {}'.format(city))
+    geocode = wg_geo.get_geocode(city)
+    if not geocode:
+        logger.warning('Can not get geocode of city: {}'.format(city))
         return None
 
-    adcode, std_city = geocode['adcode'], geocode['formatted_address']
+    top1_geocode = geocode[0]
+
+    adcode, std_city = top1_geocode['adcode'], top1_geocode['formatted_address']
     trip_dates = [day1 + timedelta(days=i) for i in range(days)]
     trip_brief = {
         'city': city, 'adcode': adcode,
         'duration': f'{days}天', 'std_city': std_city
     }
+
+    forecast = wg_weather.get_forecast(top1_geocode)
+    if not forecast:
+        logger.warning('Can not get forecast of city: {}'.format(city))
 
     weathers = []
     for td in trip_dates:
