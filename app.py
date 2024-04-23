@@ -3,7 +3,7 @@
 # File              : app.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 03.03.2024
-# Last Modified Date: 21.03.2024
+# Last Modified Date: 23.04.2024
 # Last Modified By  : Yan <yanwong@126.com>
 
 from datetime import datetime, date, timedelta
@@ -48,9 +48,9 @@ logger = logging.getLogger(__name__)
 wg_geo = GaodeGeo(GAODE_GEOCODE_URL, GAODE_POI_URL, GAODE_STATICMAP_URL)
 wg_weather = GaodeWeather(wg_geo, GAODE_WEATHER_URL)
 wg_video = BilibiliVideo(BILIBILI_SEARCH_URL, BILIBILI_EMBED_URL)
-wg_trip_advisor = QwenTripAdvisor(QWEN_LLM_NAME)
+# wg_trip_advisor = QwenTripAdvisor(QWEN_LLM_NAME)
 # wg_trip_advisor = InternTripAdvisor(INTERNLM_NAME, INTERNLM_URL)
-# wg_trip_advisor = YiTripAdvisor(YI_AUTH_URL, YI_MODEL_URL)
+wg_trip_advisor = YiTripAdvisor(YI_AUTH_URL, YI_MODEL_URL)
 
 def create_trip_brief(city, days, first_date):
     if days < 1 or days > 7:
